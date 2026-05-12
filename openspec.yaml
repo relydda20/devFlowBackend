@@ -50,12 +50,8 @@ components:
     TelemetryBatch:
       type: object
       required:
-        - user_id
         - events
       properties:
-        user_id:
-          type: string
-          format: uuid
         events:
           type: array
           items:
@@ -156,11 +152,24 @@ components:
           items:
             type: object
 
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
 paths:
   /telemetry:
     post:
       summary: Submit telemetry events from VS Code extension
       operationId: submitTelemetry
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
       requestBody:
         required: true
         content:
@@ -227,3 +236,97 @@ paths:
                     type: string
                   uptime:
                     type: number
+
+  /auth/{provider}:
+    get:
+      summary: Start OAuth flow for a provider (google or github)
+      operationId: startOAuth
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, github]
+        - name: client_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [web, vscode]
+            default: web
+      responses:
+        '302':
+          description: Redirect to provider authorization URL
+        '400':
+          description: Unsupported provider
+
+  /auth/{provider}/callback:
+    get:
+      summary: OAuth callback — completes the flow, issues JWT
+      operationId: oauthCallback
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, github]
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Web → redirect to WEB_APP_URL with session cookie; vscode → redirect to deep link with token
+        '400':
+          description: Invalid state, unsupported provider, or provider error
+
+  /auth/me:
+    get:
+      summary: Get the currently authenticated user
+      operationId: getMe
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, username, provider]
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  username:
+                    type: string
+                  email:
+                    type: string
+                    nullable: true
+                  provider:
+                    type: string
+                    enum: [google, github]
+        '401':
+          description: Authentication required
+
+  /auth/logout:
+    post:
+      summary: Clear the session cookie
+      operationId: logout
+      responses:
+        '204':
+          description: Cookie cleared
