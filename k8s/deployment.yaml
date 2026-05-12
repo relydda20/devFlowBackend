@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: who-goes-to-try-backend
+  namespace: who-goes-to-try
+  labels:
+    app: who-goes-to-try-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: who-goes-to-try-backend
+  template:
+    metadata:
+      labels:
+        app: who-goes-to-try-backend
+    spec:
+      containers:
+        - name: who-goes-to-try-backend
+          image: rafalll14/who-goes-to-try-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: who-goes-to-try-backend-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

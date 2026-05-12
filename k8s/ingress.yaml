@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: who-goes-to-try-backend
+  namespace: who-goes-to-try
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: who-goes-to-try-strip-api@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: who-goes-to-try.hackathon.sev-2.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: who-goes-to-try-backend
+                port:
+                  number: 3000
