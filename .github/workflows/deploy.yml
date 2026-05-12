@@ -72,7 +72,6 @@ jobs:
       - name: Apply Kubernetes manifests
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
-          kubectl apply -f k8s/secret.yaml --validate=false
           kubectl apply -f k8s/deployment.yaml --validate=false
           kubectl apply -f k8s/service.yaml --validate=false
           kubectl apply -f k8s/ingress.yaml --validate=false
