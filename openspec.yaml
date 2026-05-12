@@ -706,3 +706,143 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /metrics/churn:
+    get:
+      summary: Code-churn ratio for the authenticated user over a date range
+      operationId: getMetricsChurn
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: grain
+          in: query
+          required: false
+          schema: { type: string, enum: [daily, session], default: daily }
+      responses:
+        '200':
+          description: Churn ratio and totals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ratio: { type: number, nullable: true, minimum: 0, maximum: 1 }
+                  total_lines_added: { type: integer }
+                  total_lines_deleted: { type: integer }
+                  definition: { type: string, enum: [typing-heuristic] }
+                  from: { type: string }
+                  to: { type: string }
+                  grain: { type: string, enum: [daily, session] }
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id: { type: string, format: uuid }
+                        ratio: { type: number, nullable: true }
+                        total_lines_added: { type: integer }
+                        total_lines_deleted: { type: integer }
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+
+  /metrics/context-switching:
+    get:
+      summary: Editor-switch totals and top-N visited files for the authenticated user
+      operationId: getMetricsContextSwitching
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: grain
+          in: query
+          required: false
+          schema: { type: string, enum: [daily, session], default: daily }
+        - name: top_n
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        '200':
+          description: Switch totals and top-N file list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  switch_count: { type: integer }
+                  rapid_switch_count: { type: integer }
+                  top_files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path: { type: string }
+                        count: { type: integer }
+                  definition: { type: string, enum: [editor-switch-count] }
+                  from: { type: string }
+                  to: { type: string }
+                  grain: { type: string, enum: [daily, session] }
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id: { type: string, format: uuid }
+                        switch_count: { type: integer }
+                        rapid_switch_count: { type: integer }
+                        top_files:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              path: { type: string }
+                              count: { type: integer }
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+
+  /metrics/etl/run:
+    post:
+      summary: Admin-only — trigger an immediate ETL pass
+      operationId: runMetricsEtl
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Pass result summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed_count: { type: integer }
+                  watermark_before: { type: integer }
+                  watermark_after: { type: integer }
+                  duration_ms: { type: integer }
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin only / API tokens cannot trigger ETL
+        '409':
+          description: ETL pass already in flight
