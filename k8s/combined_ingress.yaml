@@ -4,15 +4,14 @@ metadata:
   name: who-goes-to-try-combined
   namespace: who-goes-to-try
   annotations:
-    # Mengaktifkan pembuatan sertifikat otomatis [cite: 547, 592]
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: "letsencrypt"
 spec:
   ingressClassName: traefik
   tls:
     - hosts:
         - who-goes-to-try.hackathon.sev-2.com
-      # Nama rahasia untuk menyimpan sertifikat [cite: 595]
-      secretName: who-goes-to-try-tls-cert
+      secretName: who-goes-to-try-tls
   rules:
     - host: who-goes-to-try.hackathon.sev-2.com
       http:
