@@ -1,0 +1,229 @@
+openapi: 3.0.0
+info:
+  title: DevFlow AI API
+  description: AI-powered workflow intelligence for agentic development
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+
+components:
+  schemas:
+    TelemetryEvent:
+      type: object
+      required:
+        - event_type
+        - timestamp
+        - session_id
+      properties:
+        event_type:
+          type: string
+          enum:
+            - file_save
+            - context_switch
+            - ai_suggestion
+            - ai_regeneration
+            - ai_chat
+        timestamp:
+          type: string
+          format: date-time
+        session_id:
+          type: string
+          format: uuid
+        file_path:
+          type: string
+        metadata:
+          type: object
+          properties:
+            lines_added:
+              type: integer
+            lines_deleted:
+              type: integer
+            ai_accepted:
+              type: boolean
+            iteration_count:
+              type: integer
+            chat_length:
+              type: integer
+
+    TelemetryBatch:
+      type: object
+      required:
+        - user_id
+        - events
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelemetryEvent'
+          minItems: 1
+
+    WorkflowState:
+      type: object
+      required:
+        - state_type
+        - confidence
+        - created_at
+      properties:
+        state_type:
+          type: string
+          enum:
+            - stuck_loop
+            - lost_in_codebase
+            - ai_dependency_trap
+            - integration_hell
+            - analysis_paralysis
+            - normal
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        duration_minutes:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Recommendation:
+      type: object
+      required:
+        - type
+        - text
+      properties:
+        type:
+          type: string
+          enum:
+            - change_approach
+            - map_system
+            - stop_using_ai
+            - simplify_problem
+            - execute
+        text:
+          type: string
+        code_context:
+          type: object
+          properties:
+            file_path:
+              type: string
+            recent_errors:
+              type: array
+              items:
+                type: string
+
+    SignalResponse:
+      type: object
+      required:
+        - state
+        - metrics
+      properties:
+        state:
+          $ref: '#/components/schemas/WorkflowState'
+        recommendation:
+          $ref: '#/components/schemas/Recommendation'
+        metrics:
+          type: object
+          required:
+            - code_churn_score
+            - context_switching_score
+            - ai_iteration_score
+          properties:
+            code_churn_score:
+              type: number
+              minimum: 0
+              maximum: 10
+            context_switching_score:
+              type: number
+              minimum: 0
+              maximum: 10
+            ai_iteration_score:
+              type: number
+              minimum: 0
+              maximum: 10
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+paths:
+  /telemetry:
+    post:
+      summary: Submit telemetry events from VS Code extension
+      operationId: submitTelemetry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryBatch'
+      responses:
+        '202':
+          description: Telemetry accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /signals/current:
+    get:
+      summary: Get current workflow signals for a user
+      operationId: getCurrentSignals
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current workflow state and metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalResponse'
+        '404':
+          description: No active session found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                  uptime:
+                    type: number
