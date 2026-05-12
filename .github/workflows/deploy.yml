@@ -78,7 +78,7 @@ jobs:
         run: |
           kubectl apply -f k8s/deployment.yaml --validate=false
           kubectl apply -f k8s/service.yaml --validate=false
-          kubectl apply -f k8s/ingress.yaml --validate=false
+          kubectl apply -f k8s/combined_ingress.yaml --validate=false
 
       - name: Update image to latest build
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
