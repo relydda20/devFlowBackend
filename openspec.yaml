@@ -152,6 +152,59 @@ components:
           items:
             type: object
 
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - token
+      properties:
+        user:
+          type: object
+          required: [id, username, provider]
+          properties:
+            id:
+              type: string
+              format: uuid
+            username:
+              type: string
+            email:
+              type: string
+              nullable: true
+            provider:
+              type: string
+              enum: [google, github, password]
+        token:
+          type: string
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -330,3 +383,63 @@ paths:
       responses:
         '204':
           description: Cookie cleared
+
+  /auth/register:
+    post:
+      summary: Register a new user with email + password
+      operationId: registerPasswordUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created; cookie set and token returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      summary: Log in with email + password
+      operationId: loginPasswordUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
