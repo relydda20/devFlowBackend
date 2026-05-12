@@ -3,9 +3,10 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main]
+  pull_request:
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/who-goes-to-try-backend
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/who-goes-to-try-backend
   NAMESPACE: who-goes-to-try
   DEPLOYMENT_NAME: who-goes-to-try-backend
 
@@ -15,16 +16,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. Build & Push Docker Image ─────────────────────────
+      - name: Validate required secrets (push to main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${DOCKERHUB_USERNAME:-}" ] || { echo "Missing secret DOCKERHUB_USERNAME"; exit 1; }
+          [ -n "${DOCKERHUB_TOKEN:-}" ] || { echo "Missing secret DOCKERHUB_TOKEN"; exit 1; }
+          [ -n "${KUBECONFIG_DATA:-}" ] || { echo "Missing secret KUBECONFIG_DATA"; exit 1; }
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
+
       - name: Log in to Docker Hub
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set image tag
         id: vars
@@ -34,32 +47,30 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
             ${{ env.IMAGE_NAME }}:latest
 
-      # ── 3. Deploy ke Kubernetes ───────────────────────────────
       - name: Setup kubectl
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: azure/setup-kubectl@v4
         with:
           version: "latest"
 
       - name: Configure kubeconfig
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.kube"
-          if echo "${KUBE_CONFIG}" | grep -q "apiVersion:"; then
-            printf "%s" "${KUBE_CONFIG}" > "$HOME/.kube/config"
-          else
-            echo "${KUBE_CONFIG}" | base64 -d > "$HOME/.kube/config"
-          fi
+          echo "${KUBECONFIG_DATA}" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
         env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
 
       - name: Apply Kubernetes manifests
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           kubectl apply -f k8s/secret.yaml --validate=false
           kubectl apply -f k8s/deployment.yaml --validate=false
@@ -67,16 +78,19 @@ jobs:
           kubectl apply -f k8s/ingress.yaml --validate=false
 
       - name: Update image to latest build
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
             ${{ env.DEPLOYMENT_NAME }}=${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }} \
             -n ${{ env.NAMESPACE }}
 
       - name: Wait for rollout to finish
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
             -n ${{ env.NAMESPACE }} \
             --timeout=120s
 
       - name: Show running pods
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: kubectl get pods -n ${{ env.NAMESPACE }}
