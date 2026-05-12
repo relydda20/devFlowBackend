@@ -19,7 +19,9 @@ async function testModels() {
     // Test 3: Create a test user
     const user = await User.create({
       username: 'test_user',
-      email: 'test@devflow.ai'
+      email: 'test@devflow.ai',
+      provider: 'password',
+      provider_user_id: 'test@devflow.ai'
     });
     logger.info('✅ Created test user', { id: user.id, username: user.username });
     

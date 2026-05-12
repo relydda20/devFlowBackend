@@ -17,12 +17,16 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   provider: {
-    type: DataTypes.ENUM('google', 'github'),
+    type: DataTypes.ENUM('google', 'github', 'password'),
     allowNull: false
   },
   provider_user_id: {
     type: DataTypes.TEXT,
     allowNull: false
+  },
+  password_hash: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   tableName: 'users',
