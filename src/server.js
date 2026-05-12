@@ -3,17 +3,21 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import logger from './utils/logger.js';
 import telemetryRouter from './routes/telemetry.routes.js';
 import healthRouter from './routes/health.routes.js';
+import authRouter from './routes/auth.routes.js';
 
 const app = express();
 
 app.use(helmet());
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/api/v1', healthRouter);
+app.use('/api/v1', authRouter);
 app.use('/api/v1', telemetryRouter);
 
 app.use((err, req, res, _next) => {
