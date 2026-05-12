@@ -7,6 +7,7 @@ import ApiToken from './api-token.model.js';
 import EtlJob from './etl-job.model.js';
 import MetricsDaily from './metrics-daily.model.js';
 import MetricsSession from './metrics-session.model.js';
+import PairingCode from './pairing-code.model.js';
 
 // All associations are already defined in individual model files
 // This file just exports them for easy importing
@@ -20,5 +21,6 @@ export {
   ApiToken,
   EtlJob,
   MetricsDaily,
-  MetricsSession
+  MetricsSession,
+  PairingCode
 };

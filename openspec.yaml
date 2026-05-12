@@ -846,3 +846,115 @@ paths:
           description: Admin only / API tokens cannot trigger ETL
         '409':
           description: ETL pass already in flight
+
+  /recommendations/pending:
+    get:
+      summary: Returns the single pending recommendation for the authenticated user, or null
+      operationId: getPendingRecommendation
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Pending recommendation or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendation:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      state_type: { type: string }
+                      confidence_score: { type: number }
+                      recommendation_type: { type: string }
+                      recommendation_text: { type: string }
+                      reasoning: { type: string, nullable: true }
+                      user_action: { type: string, nullable: true }
+                      created_at: { type: string, format: date-time }
+        '401':
+          description: Unauthorized
+
+  /recommendations:
+    get:
+      summary: Recent recommendations for the authenticated user
+      operationId: getRecommendations
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: List of recommendations (newest first)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        state_type: { type: string }
+                        confidence_score: { type: number }
+                        recommendation_type: { type: string }
+                        recommendation_text: { type: string }
+                        reasoning: { type: string, nullable: true }
+                        user_action: { type: string, nullable: true }
+                        created_at: { type: string, format: date-time }
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+
+  /recommendations/{id}/action:
+    post:
+      summary: Record the user's response to a recommendation
+      operationId: postRecommendationAction
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [accepted, dismissed, snoozed]
+      responses:
+        '200':
+          description: Action recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  user_action: { type: string }
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Recommendation not owned by caller
+        '404':
+          description: Recommendation not found
+        '409':
+          description: Recommendation already acted on
