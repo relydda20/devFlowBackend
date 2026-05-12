@@ -46,10 +46,11 @@ export async function oauthCallback(req, res, next) {
     }
 
     const isProd = process.env.NODE_ENV === 'production';
+    // Prod: cross-origin frontend in cluster requires SameSite=None; Secure.
     res.cookie('session', token, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge: SEVEN_DAYS_MS,
     });
@@ -84,6 +85,14 @@ export async function getMe(req, res, next) {
 }
 
 export function logout(req, res) {
-  res.cookie('session', '', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 0 });
+  const isProd = process.env.NODE_ENV === 'production';
+  // Cookie-deletion attrs MUST match the set attrs or the browser keeps the original.
+  res.cookie('session', '', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/',
+    maxAge: 0,
+  });
   res.status(204).end();
 }

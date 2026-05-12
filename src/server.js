@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv-flow/config';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import helmet from 'helmet';
@@ -15,7 +15,17 @@ import * as metricsEtlScheduler from './services/metrics-etl-scheduler.js';
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    const allowed = (process.env.CORS_ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return cb(null, allowed.includes(origin));
+  },
+  credentials: true,
+}));
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 

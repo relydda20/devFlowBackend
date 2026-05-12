@@ -9,10 +9,12 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function setSessionCookie(res, token) {
   const isProd = process.env.NODE_ENV === 'production';
+  // Prod: cross-origin frontend in cluster requires SameSite=None; Secure.
+  // Dev: localhost flows don't tolerate Secure, and Lax is enough same-origin.
   res.cookie('session', token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
     maxAge: SEVEN_DAYS_MS,
   });
