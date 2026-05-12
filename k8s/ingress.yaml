@@ -3,6 +3,9 @@ kind: Ingress
 metadata:
   name: who-goes-to-try-combined
   namespace: who-goes-to-try
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.middlewares: who-goes-to-try-strip-api@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
