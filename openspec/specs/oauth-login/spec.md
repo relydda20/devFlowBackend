@@ -54,8 +54,8 @@ The system SHALL ensure at most one `User` row exists for any `(provider, provid
 The system SHALL mint JWTs signed with `JWT_SECRET` (HS256) containing `sub` (User UUID), `provider`, `iat`, and `exp` claims.
 
 #### Scenario: Token decodes to expected claims
-- **WHEN** a JWT issued by the callback is decoded
-- **THEN** it contains `sub` (matching the User's UUID), `provider` (`google` or `github`), `iat` (issued-at timestamp), and `exp` (expiry timestamp, no more than 7 days after `iat`)
+- **WHEN** a JWT issued by any auth flow is decoded
+- **THEN** it contains `sub` (matching the User's UUID), `provider` (one of `google`, `github`, or `password`), `iat` (issued-at timestamp), and `exp` (expiry timestamp, no more than 7 days after `iat`)
 
 ### Requirement: JWT verification middleware
 The system SHALL provide middleware that accepts a JWT from either `Authorization: Bearer <jwt>` or a `session` cookie, verifies it, and attaches `req.user = { id, provider }` on success.
