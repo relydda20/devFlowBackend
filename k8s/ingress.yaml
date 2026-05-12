@@ -1,16 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: who-goes-to-try-backend
+  name: who-goes-to-try-combined
   namespace: who-goes-to-try
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: who-goes-to-try-strip-api@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
     - host: who-goes-to-try.hackathon.sev-2.com
       http:
         paths:
+          # 1. Backend (HARUS DI ATAS) agar /api tidak "dimakan" oleh frontend
           - path: /api
             pathType: Prefix
             backend:
@@ -18,3 +17,11 @@ spec:
                 name: who-goes-to-try-backend
                 port:
                   number: 3000
+          # 2. Frontend (DI BAWAH) sebagai jalur utama halaman web
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: who-goes-to-try-frontend
+                port:
+                  number: 80
