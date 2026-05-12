@@ -6,7 +6,9 @@ metadata:
   labels:
     app: who-goes-to-try-backend
 spec:
-  replicas: 2
+  # OAuth flow stores `state` in-memory; multiple replicas can cause callback
+  # to hit a different pod and fail with "Invalid or expired state".
+  replicas: 1
   selector:
     matchLabels:
       app: who-goes-to-try-backend

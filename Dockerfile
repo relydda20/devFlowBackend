@@ -7,6 +7,7 @@ RUN npm install --omit=dev
 # Stage 2: Production image
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache ca-certificates
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
