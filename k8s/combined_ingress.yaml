@@ -3,13 +3,20 @@ kind: Ingress
 metadata:
   name: who-goes-to-try-combined
   namespace: who-goes-to-try
+  annotations:
+    # Mengaktifkan pembuatan sertifikat otomatis [cite: 547, 592]
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - who-goes-to-try.hackathon.sev-2.com
+      # Nama rahasia untuk menyimpan sertifikat [cite: 595]
+      secretName: who-goes-to-try-tls-cert
   rules:
     - host: who-goes-to-try.hackathon.sev-2.com
       http:
         paths:
-          # 1. ATURAN BACKEND (Wajib di atas)
           - path: /api
             pathType: Prefix
             backend:
@@ -17,7 +24,6 @@ spec:
                 name: who-goes-to-try-backend
                 port:
                   number: 3000
-          # 2. ATURAN FRONTEND (Di bawah sebagai jalur utama)
           - path: /
             pathType: Prefix
             backend:
