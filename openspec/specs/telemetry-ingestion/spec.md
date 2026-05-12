@@ -1,14 +1,18 @@
 # telemetry-ingestion
 
 ### Requirement: Telemetry batch endpoint
-The system SHALL expose `POST /api/v1/telemetry` that accepts a JSON `TelemetryBatch` (a `user_id` and a non-empty array of `TelemetryEvent` entries) and persists each event as an `Activity` row.
+The system SHALL expose `POST /api/v1/telemetry`, protected by JWT authentication middleware, that accepts a JSON `TelemetryBatch` (a non-empty array of `TelemetryEvent` entries) and persists each event as an `Activity` row tied to the authenticated user. The request body MUST NOT contain a `user_id` field — the user is derived from the JWT.
 
 #### Scenario: Valid batch is accepted
-- **WHEN** a client posts a well-formed `TelemetryBatch` with one or more events
-- **THEN** the server responds with HTTP `202` and a JSON body containing `message` and `accepted_count` equal to the number of events persisted
+- **WHEN** an authenticated client posts a well-formed `TelemetryBatch` with one or more events
+- **THEN** the server responds with HTTP `202` and a JSON body containing `message` and `accepted_count` equal to the number of events persisted, with all rows linked to the `user_id` derived from the JWT
+
+#### Scenario: Missing or invalid JWT
+- **WHEN** a client posts a batch without a valid JWT (no header, no cookie, expired, bad signature)
+- **THEN** the server responds with HTTP `401` and no rows are written, before any validation or persistence runs
 
 #### Scenario: Schema-invalid batch is rejected
-- **WHEN** a client posts a body that fails the `TelemetryBatch` OpenAPI schema (missing required field, unknown `event_type`, malformed `timestamp`, empty `events` array)
+- **WHEN** an authenticated client posts a body that fails the `TelemetryBatch` OpenAPI schema (missing required field, unknown `event_type`, malformed `timestamp`, empty `events` array)
 - **THEN** the server responds with HTTP `400` and a body containing `error: "Validation failed"` and per-field `details`, and no rows are written
 
 #### Scenario: Persistence failure rolls back the batch
@@ -39,13 +43,6 @@ The system SHALL persist all events in a single batch within one database transa
 #### Scenario: Mid-batch failure
 - **WHEN** the first N events insert successfully but event N+1 fails
 - **THEN** the transaction is rolled back, no events from the batch are visible in `activities`, and any session created during the batch is also rolled back
-
-### Requirement: Unknown user is rejected
-The system SHALL reject batches whose `user_id` has no corresponding `User` row, without creating one, so that user creation remains the sole responsibility of the (future) authentication flow.
-
-#### Scenario: user_id does not exist
-- **WHEN** a client posts a batch with a `user_id` that has no matching row in `users`
-- **THEN** the server responds with HTTP `404` and a body `{ error: "User not found" }`, no `Session` is created, and no `Activity` rows are written
 
 ### Requirement: Declarative schema validation
 The system SHALL validate `POST /api/v1/telemetry` payloads using the `TelemetryBatch` schema defined in `openspec.yaml`, via the existing `validateRequest` middleware, with no duplicated validation logic in the controller.

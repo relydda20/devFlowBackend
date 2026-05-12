@@ -14,13 +14,23 @@ const User = sequelize.define('User', {
   },
   email: {
     type: DataTypes.STRING(255),
-    unique: true,
     allowNull: true
+  },
+  provider: {
+    type: DataTypes.ENUM('google', 'github'),
+    allowNull: false
+  },
+  provider_user_id: {
+    type: DataTypes.TEXT,
+    allowNull: false
   }
 }, {
   tableName: 'users',
   timestamps: true,
-  underscored: true
+  underscored: true,
+  indexes: [
+    { unique: true, fields: ['provider', 'provider_user_id'] }
+  ]
 });
 
 export default User;
