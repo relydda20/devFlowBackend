@@ -1,0 +1,49 @@
+# OpenSpec Configuration
+# DevFlow Backend Project
+
+project:
+  name: "DevFlow AI Backend"
+  version: "1.0.0"
+  description: "AI-powered workflow intelligence for agentic development"
+
+# Default profile for workflow commands
+profile: "core"  # Options: core, expanded
+
+# Domains in your system
+domains:
+  - validation     # OpenSpec validation system
+  - telemetry     # Event tracking
+  - signals       # Workflow signals
+  - recommendations  # AI recommendations
+  - health        # Health checks
+
+# Change naming convention
+change_naming:
+  prefix: "add-"  # For new features
+  # prefix: "fix-"  # For bug fixes
+  # prefix: "refactor-"  # For refactoring
+
+# Spec template preferences
+templates:
+  requirement_format: "gherkin"  # Options: gherkin, prose
+  include_examples: true
+  include_rationale: true
+
+# Archive settings
+archive:
+  auto_timestamp: true  # Add timestamp to archived changes
+  preserve_artifacts: true  # Keep proposal, design, tasks
+
+# Validation rules
+validation:
+  require_proposal: true
+  require_specs: true
+  require_design: true
+  require_tasks: true
+  
+# Custom commands (optional)
+# commands:
+#   - name: "review"
+#     description: "Review change artifacts"
+#   - name: "status"
+#     description: "Show implementation status"
