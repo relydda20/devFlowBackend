@@ -10,53 +10,243 @@ servers:
 
 components:
   schemas:
-    TelemetryEvent:
+    FileTelemetryMetadata:
       type: object
       required:
-        - event_type
+        - path
+      properties:
+        name: { type: string }
+        path: { type: string }
+        absolute_path: { type: string }
+        extension: { type: string }
+        language: { type: string }
+        workspace: { type: string }
+        lines: { type: integer }
+        size_bytes: { type: integer }
+
+    BaseTelemetryEvent:
+      type: object
+      required:
+        - type
         - timestamp
+        - workspace
         - session_id
       properties:
-        event_type:
+        type:
           type: string
           enum:
             - file_save
-            - context_switch
-            - ai_suggestion
-            - ai_regeneration
-            - ai_chat
+            - text_change
+            - editor_switch
+            - debug_session_start
+            - terminal_open
+            - git_activity
         timestamp:
           type: string
           format: date-time
+        workspace:
+          type: string
         session_id:
           type: string
           format: uuid
-        file_path:
-          type: string
-        metadata:
-          type: object
-          properties:
-            lines_added:
-              type: integer
-            lines_deleted:
-              type: integer
-            ai_accepted:
-              type: boolean
-            iteration_count:
-              type: integer
-            chat_length:
-              type: integer
 
-    TelemetryBatch:
+    TelemetryEvent:
+      oneOf:
+        - $ref: '#/components/schemas/FileSaveTelemetryEvent'
+        - $ref: '#/components/schemas/TextChangeTelemetryEvent'
+        - $ref: '#/components/schemas/EditorSwitchTelemetryEvent'
+        - $ref: '#/components/schemas/DebugSessionTelemetryEvent'
+        - $ref: '#/components/schemas/TerminalTelemetryEvent'
+        - $ref: '#/components/schemas/GitActivityTelemetryEvent'
+
+    FileSaveTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [file]
+          properties:
+            type: { type: string, enum: [file_save] }
+            file: { $ref: '#/components/schemas/FileTelemetryMetadata' }
+
+    TextChangeTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [file, metrics]
+          properties:
+            type: { type: string, enum: [text_change] }
+            file: { $ref: '#/components/schemas/FileTelemetryMetadata' }
+            metrics:
+              type: object
+              required:
+                - characters_added
+                - characters_deleted
+                - change_count
+                - edit_duration_ms
+                - is_large_paste
+                - is_possible_rewrite
+                - is_possible_undo_cycle
+              properties:
+                characters_added: { type: integer }
+                characters_deleted: { type: integer }
+                change_count: { type: integer }
+                affected_line_ranges:
+                  type: array
+                  items:
+                    type: object
+                    required: [start, end]
+                    properties:
+                      start: { type: integer }
+                      end: { type: integer }
+                edit_duration_ms: { type: integer }
+                is_large_paste: { type: boolean }
+                is_possible_rewrite: { type: boolean }
+                is_possible_undo_cycle: { type: boolean }
+
+    EditorSwitchTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [metrics]
+          properties:
+            type: { type: string, enum: [editor_switch] }
+            from:
+              type: object
+              properties:
+                file: { type: string }
+                language: { type: string }
+                module: { type: string }
+            to:
+              type: object
+              properties:
+                file: { type: string }
+                language: { type: string }
+                module: { type: string }
+            metrics:
+              type: object
+              required:
+                - switch_interval_seconds
+                - is_cross_module_switch
+                - is_rapid_context_switching
+              properties:
+                switch_interval_seconds: { type: number }
+                is_cross_module_switch: { type: boolean }
+                is_rapid_context_switching: { type: boolean }
+
+    DebugSessionTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [debug]
+          properties:
+            type: { type: string, enum: [debug_session_start] }
+            debug:
+              type: object
+              required: [name, type]
+              properties:
+                name: { type: string }
+                type: { type: string }
+                launch_configuration_name: { type: string }
+
+    TerminalTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [terminal]
+          properties:
+            type: { type: string, enum: [terminal_open] }
+            terminal:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                shell_type: { type: string }
+
+    GitActivityTelemetryEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseTelemetryEvent'
+        - type: object
+          required: [git]
+          properties:
+            type: { type: string, enum: [git_activity] }
+            git:
+              type: object
+              required: [changed_files_count]
+              properties:
+                branch: { type: string }
+                changed_files_count: { type: integer }
+
+    TelemetryPayload:
       type: object
       required:
+        - workspace
+        - machine_timestamp
+        - session
         - events
       properties:
+        workspace:
+          type: string
+        machine_timestamp:
+          type: string
+          format: date-time
+        session:
+          type: object
+          required:
+            - active_minutes
+            - idle_minutes
+            - total_events_collected
+            - save_frequency
+            - editor_switch_frequency
+          properties:
+            active_minutes: { type: number }
+            idle_minutes: { type: number }
+            total_events_collected: { type: integer }
+            save_frequency: { type: number }
+            editor_switch_frequency: { type: number }
         events:
           type: array
+          minItems: 1
           items:
             $ref: '#/components/schemas/TelemetryEvent'
-          minItems: 1
+
+    IssueTokenRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+
+    IssueTokenResponse:
+      type: object
+      required: [id, name, token, token_prefix, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        token: { type: string }
+        token_prefix: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ApiTokenSummary:
+      type: object
+      required: [id, name, token_prefix, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        token_prefix: { type: string }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+
+    TokenListResponse:
+      type: object
+      required: [tokens]
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiTokenSummary'
 
     WorkflowState:
       type: object
@@ -218,7 +408,7 @@ components:
 paths:
   /telemetry:
     post:
-      summary: Submit telemetry events from VS Code extension
+      summary: Submit a TelemetryPayload from the DevVital AI extension
       operationId: submitTelemetry
       security:
         - bearerAuth: []
@@ -228,7 +418,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TelemetryBatch'
+              $ref: '#/components/schemas/TelemetryPayload'
       responses:
         '202':
           description: Telemetry accepted for processing
@@ -236,15 +426,88 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [message, accepted_count]
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
+                  accepted_count: { type: integer }
         '400':
           description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '409':
+          description: Session ownership conflict
+
+  /auth/tokens:
+    post:
+      summary: Mint a long-lived API token for the authenticated user
+      operationId: issueApiToken
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueTokenRequest'
+      responses:
+        '201':
+          description: Token issued (returned once)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueTokenResponse'
+        '400':
+          description: Validation failed
+        '401':
+          description: Unauthorized
+        '403':
+          description: API tokens cannot mint tokens
+    get:
+      summary: List the caller's API tokens
+      operationId: listApiTokens
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Tokens (hash and plaintext never returned)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: API tokens cannot list tokens
+
+  /auth/tokens/{id}:
+    delete:
+      summary: Revoke an API token owned by the caller
+      operationId: revokeApiToken
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          description: Unauthorized
+        '403':
+          description: API tokens cannot revoke tokens
+        '404':
+          description: Not found
 
   /signals/current:
     get:

@@ -1,4 +1,4 @@
-# telemetry-ingestion
+## MODIFIED Requirements
 
 ### Requirement: Telemetry batch endpoint
 The system SHALL expose `POST /api/v1/telemetry`, protected by auth middleware that accepts either a JWT or a `dvf_`-prefixed API token, that accepts a JSON `TelemetryPayload` (an object with `workspace`, `machine_timestamp`, `session` aggregate, and a non-empty `events` array of typed `TelemetryEvent` entries) and persists each event as an `Activity` row tied to the authenticated user. The request body MUST NOT contain a `user_id` field — the user is derived from the credential.

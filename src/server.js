@@ -8,6 +8,7 @@ import logger from './utils/logger.js';
 import telemetryRouter from './routes/telemetry.routes.js';
 import healthRouter from './routes/health.routes.js';
 import authRouter from './routes/auth.routes.js';
+import tokenRouter from './routes/token.routes.js';
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/api/v1', healthRouter);
+app.use('/api/v1', tokenRouter);
 app.use('/api/v1', authRouter);
 app.use('/api/v1', telemetryRouter);
 
