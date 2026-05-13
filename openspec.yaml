@@ -742,6 +742,16 @@ paths:
                   from: { type: string }
                   to: { type: string }
                   grain: { type: string, enum: [daily, session] }
+                  series:
+                    type: array
+                    description: Per-day breakdown for the requested range (daily grain only). Missing days are zero-filled.
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+                        lines_added: { type: integer }
+                        lines_deleted: { type: integer }
+                        ratio: { type: number, nullable: true }
                   sessions:
                     type: array
                     items:
@@ -801,6 +811,15 @@ paths:
                   from: { type: string }
                   to: { type: string }
                   grain: { type: string, enum: [daily, session] }
+                  series:
+                    type: array
+                    description: Per-day breakdown for the requested range (daily grain only). Missing days are zero-filled.
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+                        switch_count: { type: integer }
+                        rapid_switch_count: { type: integer }
                   sessions:
                     type: array
                     items:
