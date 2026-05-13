@@ -226,7 +226,7 @@ export async function evaluateUser(userId) {
       error: err.message,
       name: err.name,
     });
-    return { skipped: true, reason: 'llm_failed' };
+    return { skipped: true, reason: 'llm_failed', error: err.message };
   }
 
   const persisted = await persistInsight({

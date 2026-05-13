@@ -226,6 +226,10 @@ export async function generateInsight(input) {
   }
 
   if (!validateInsight(parsed)) {
+    logger.warn('gemini: schema validation failed', {
+      errors: ajv.errorsText(validateInsight.errors),
+      payload: parsed,
+    });
     throw new GeminiValidationError(
       `gemini: schema validation failed: ${ajv.errorsText(validateInsight.errors)}`,
       parsed,
