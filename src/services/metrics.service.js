@@ -77,15 +77,45 @@ export async function getChurn({ userId, from, to, grain }) {
     added += Number(row.lines_added) || 0;
     deleted += Number(row.lines_deleted) || 0;
   }
+
+  const byDate = new Map();
+  for (const row of rows) {
+    const key = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
+    byDate.set(key, {
+      lines_added: Number(row.lines_added) || 0,
+      lines_deleted: Number(row.lines_deleted) || 0,
+    });
+  }
+  const series = enumerateDates(from, to).map((date) => {
+    const entry = byDate.get(date) ?? { lines_added: 0, lines_deleted: 0 };
+    return {
+      date,
+      lines_added: entry.lines_added,
+      lines_deleted: entry.lines_deleted,
+      ratio: computeRatio(entry.lines_added, entry.lines_deleted),
+    };
+  });
+
   return {
     ratio: computeRatio(added, deleted),
     total_lines_added: added,
     total_lines_deleted: deleted,
+    series,
     definition: CHURN_DEFINITION,
     from,
     to,
     grain: 'daily',
   };
+}
+
+function enumerateDates(from, to) {
+  const start = new Date(`${from}T00:00:00.000Z`);
+  const end = new Date(`${to}T00:00:00.000Z`);
+  const dates = [];
+  for (let d = start; d <= end; d = new Date(d.getTime() + 24 * 60 * 60 * 1000)) {
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
 }
 
 export async function getContextSwitching({ userId, from, to, grain, topN }) {
@@ -107,10 +137,25 @@ export async function getContextSwitching({ userId, from, to, grain, topN }) {
     switchCount += Number(row.editor_switch_count) || 0;
     rapidCount += Number(row.rapid_switch_count) || 0;
   }
+
+  const byDate = new Map();
+  for (const row of rows) {
+    const key = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date);
+    byDate.set(key, {
+      switch_count: Number(row.editor_switch_count) || 0,
+      rapid_switch_count: Number(row.rapid_switch_count) || 0,
+    });
+  }
+  const series = enumerateDates(from, to).map((date) => {
+    const entry = byDate.get(date) ?? { switch_count: 0, rapid_switch_count: 0 };
+    return { date, switch_count: entry.switch_count, rapid_switch_count: entry.rapid_switch_count };
+  });
+
   return {
     switch_count: switchCount,
     rapid_switch_count: rapidCount,
     top_files: mergeTopFiles(rows, topN),
+    series,
     definition: SWITCH_DEFINITION,
     from,
     to,
