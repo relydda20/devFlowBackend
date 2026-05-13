@@ -67,6 +67,40 @@ const validateInsight = ajv.compile(insightSchema);
 const apiKey = process.env.GOOGLE_API_KEY;
 const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
+// Gemini's responseSchema is a subset of OpenAPI 3.0 — NOT JSON Schema.
+// Key differences from `insightSchema` above: no `additionalProperties`, no
+// `minLength`/`maxLength`, no union types, types use SchemaType-like strings.
+const geminiResponseSchema = {
+  type: 'object',
+  required: [
+    'state_type',
+    'confidence_score',
+    'recommendation_type',
+    'recommendation_text',
+    'reasoning',
+    'evidence',
+  ],
+  properties: {
+    state_type: { type: 'string', enum: STATE_TYPES },
+    confidence_score: { type: 'number' },
+    recommendation_type: { type: 'string', enum: RECOMMENDATION_TYPES },
+    recommendation_text: { type: 'string' },
+    reasoning: { type: 'string' },
+    evidence: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['metric', 'value'],
+        properties: {
+          metric: { type: 'string', enum: [...CITABLE_METRICS, 'top_file'] },
+          // responseSchema doesn't allow union types; force string and we'll coerce.
+          value: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 let model = null;
 if (apiKey) {
   const client = new GoogleGenerativeAI(apiKey);
@@ -74,6 +108,7 @@ if (apiKey) {
     model: modelName,
     generationConfig: {
       responseMimeType: 'application/json',
+      responseSchema: geminiResponseSchema,
       temperature: 0.4,
     },
   });
@@ -223,6 +258,21 @@ export async function generateInsight(input) {
     parsed = JSON.parse(text);
   } catch (err) {
     throw new GeminiValidationError(`gemini: response not JSON: ${err.message}`, text.slice(0, 200));
+  }
+
+  // Gemini's responseSchema doesn't support union types, so we asked for string-typed
+  // values in the evidence array. Coerce numeric-looking strings back to numbers so
+  // downstream consumers (dashboard, evidenceMatchesInput) work uniformly.
+  if (Array.isArray(parsed.evidence)) {
+    parsed.evidence = parsed.evidence.map((item) => {
+      if (item && typeof item.value === 'string') {
+        const asNumber = Number(item.value);
+        if (Number.isFinite(asNumber) && item.metric !== 'top_file') {
+          return { ...item, value: asNumber };
+        }
+      }
+      return item;
+    });
   }
 
   if (!validateInsight(parsed)) {
