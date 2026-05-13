@@ -48,7 +48,7 @@ curl -s "http://localhost:3000/api/v1/metrics/context-switching?from=2026-05-01&
 
 ## ETL — how the aggregates are produced
 
-The periodic job [src/services/metrics-etl-scheduler.js](../src/services/metrics-etl-scheduler.js) ticks every `METRICS_ETL_INTERVAL_SECONDS` (default 300). On each tick:
+The periodic job [src/services/metrics-etl-scheduler.js](../src/services/metrics-etl-scheduler.js) ticks every `METRICS_ETL_INTERVAL_SECONDS` (code default 300, production runs at 60 — the dashboard's refresh timer is matched to this). On each tick:
 
 1. Reads up to `METRICS_ETL_BATCH_SIZE` (default 5000) new `activities` rows since the watermark stored in `etl_jobs.last_processed_activity_id`.
 2. Filters to `text_change` and `editor_switch` events; ignores all others (but still advances the watermark past them).
@@ -83,7 +83,7 @@ This uses `sequelize.sync()` (no `force: true`) so it will NOT touch existing ta
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `METRICS_ETL_INTERVAL_SECONDS` | `300` | Seconds between scheduler ticks. |
+| `METRICS_ETL_INTERVAL_SECONDS` | `300` | Seconds between scheduler ticks. Set to `60` in the cluster Secret so the dashboard's 60s auto-refresh sees fresh aggregates. |
 | `METRICS_ETL_BATCH_SIZE` | `5000` | Max `activities` rows consumed per pass. |
 | `METRICS_ETL_ENABLED` | `true` | Set to `false` or `0` to disable the scheduler (useful for tests / local debugging). |
 | `ADMIN_USER_IDS` | _(empty)_ | Comma-separated UUIDs allowed to call `POST /metrics/etl/run`. |

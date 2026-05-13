@@ -61,7 +61,7 @@ The `/dashboard` page reads from the metrics endpoints described in [metrics.md]
 
 **Default range:** last 7 days, inclusive of today. Computed at mount in UTC. There's no date-range picker yet.
 
-**Refetch behavior:** mount + `visibilitychange` (when the tab returns to the foreground). A 1-second debounce skips redundant refetches when the visibility flips rapidly. **No polling timer** — the ETL is server-side, refreshes every ~5 minutes, and the dashboard's job is to ask for the latest only when the user is actually looking.
+**Refetch behavior:** mount + `visibilitychange` (when the tab returns to the foreground, debounced 1s) + a 60-second polling timer that calls `refetch()` on every card to stay in lockstep with the backend ETL cadence (`METRICS_ETL_INTERVAL_SECONDS`, configured to 60s in production). Pre-2026-05 builds had no timer; this was added when the ETL was tightened from 300s to 60s for live-feel demos.
 
 **Card states.** Each metric card renders one of four states:
 - `loading` — skeleton placeholder
