@@ -135,6 +135,10 @@ function isInCooldown(latest) {
   if (latest.user_action === 'snoozed') {
     return minutesAgo(latest.created_at) < SNOOZE_MINUTES();
   }
+  // Pending (null) is the only other state that should gate new recommendations.
+  // 'dismissed', 'accepted', 'expired' all mean "the user/system is done with this one" —
+  // a new recommendation may fire immediately.
+  if (latest.user_action !== null) return false;
   return minutesAgo(latest.created_at) < COOLDOWN_MINUTES();
 }
 
