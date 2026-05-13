@@ -10,8 +10,8 @@ const USER_CODE_HALF = 4;
 const TTL_SECONDS = 600;
 const CLEANUP_GRACE_SECONDS = 3600;
 
-function getFrontendUrl() {
-  return process.env.FRONTEND_URL || 'http://localhost:5173';
+export function getFrontendUrl() {
+  return (process.env.FRONTEND_URL || 'https://who-goes-to-try.hackathon.sev-2.com').replace(/\/+$/, '');
 }
 
 export function generateUserCode() {

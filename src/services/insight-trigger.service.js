@@ -8,6 +8,10 @@ import {
 } from '../models/index.js';
 import { generateInsight, isConfigured as isGeminiConfigured } from './llm/gemini.service.js';
 
+const DEMO_RECOMMENDATION_TEXT =
+  "You've been heads-down for a while. Consider stepping away for 5 minutes — your next bug is probably hiding behind a clear head.";
+const DEMO_REASONING = 'Manually triggered demo recommendation; no Gemini call was made.';
+
 const ACTIVITY_WINDOW_MINUTES = () =>
   positiveInt(process.env.INSIGHT_ACTIVITY_WINDOW_MINUTES, 30);
 const COOLDOWN_MINUTES = () =>
@@ -242,4 +246,61 @@ export async function evaluateUser(userId) {
 
 export async function listCandidateUsers() {
   return listActiveUsers();
+}
+
+export async function expireLatestRecommendation(userId) {
+  const [, affected] = await sequelize.query(
+    `UPDATE recommendations
+        SET user_action = 'expired'
+      WHERE id = (
+        SELECT r.id
+          FROM recommendations r
+          JOIN workflow_states ws ON ws.id = r.workflow_state_id
+          JOIN sessions s ON s.id = ws.session_id
+         WHERE s.user_id = :user_id
+         ORDER BY r.created_at DESC
+         LIMIT 1
+      )
+        AND user_action IS NULL`,
+    { replacements: { user_id: userId } },
+  );
+  return typeof affected === 'number' ? affected : (affected?.rowCount ?? 0);
+}
+
+export async function createDemoRecommendation(userId) {
+  const session = await getCurrentSessionForUser(userId);
+  if (!session) {
+    return { skipped: true, reason: 'no_session' };
+  }
+
+  const recommendationId = await sequelize.transaction(async (t) => {
+    const workflowState = await WorkflowState.create(
+      {
+        session_id: session.id,
+        state_type: 'demo',
+        confidence_score: 1.0,
+      },
+      { transaction: t },
+    );
+
+    const recommendation = await Recommendation.create(
+      {
+        workflow_state_id: workflowState.id,
+        recommendation_type: 'execute',
+        recommendation_text: DEMO_RECOMMENDATION_TEXT,
+        code_context: { reasoning: DEMO_REASONING, triggered_rule: 'demo_trigger' },
+        user_action: null,
+      },
+      { transaction: t },
+    );
+
+    return recommendation.id;
+  });
+
+  logger.info('recommendation-trigger: demo recommendation created', {
+    user_id: userId,
+    recommendation_id: recommendationId,
+  });
+
+  return { skipped: false, mode: 'demo', recommendation_id: recommendationId };
 }

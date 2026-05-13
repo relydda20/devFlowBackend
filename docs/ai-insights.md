@@ -79,3 +79,19 @@ All require JWT or `dvf_` API token auth. The action endpoint also verifies owne
 - **Extension polls every 60 s.** Worst case the popup is delayed by one poll interval. Acceptable for "consider a break" UX.
 
 Cross-reference: this pipeline reads from `metrics_daily` and `metrics_session` populated by the [metrics ETL](metrics.md).
+
+## Manual trigger (demo / debugging escape hatch)
+
+`POST /api/v1/recommendations/trigger` lets a signed-in user force the insight pipeline to run immediately, instead of waiting on the 10-minute scheduler tick. **This is an escape hatch for demos and live debugging — not a production feature.** A logged-in user can produce a popup on demand by spamming the `demo` mode; this is acceptable per-user but not something to advertise to end users.
+
+Body: `{ "mode": "real" | "force" | "demo" }`. Mode defaults to `"real"`.
+
+| Mode | Behaviour |
+| --- | --- |
+| `real` | Invokes `evaluateUser` with all gates intact (cooldown, rules, Gemini). Returns `{ skipped, reason }` or `{ skipped: false, rule, state_type, recommendation_id }`. |
+| `force` | Marks the user's latest pending recommendation as `expired`, then runs `evaluateUser`. Cooldown is bypassed; the rule + LLM gates still apply. |
+| `demo` | Fabricates a canned `WorkflowState` (`state_type = 'demo'`) + `Recommendation`. No Gemini call. Returns HTTP 409 if the user has no active session. |
+
+Every successful call emits a single `logger.info('recommendation-trigger', { user_id, mode, outcome })` line.
+
+In the VSCode extension, **DevVital AI: Trigger Insight** (command palette) opens a quick-pick of the three modes. After POSTing, the extension immediately polls `/recommendations/pending` so the resulting popup surfaces within a second or two.

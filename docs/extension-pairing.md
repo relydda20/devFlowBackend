@@ -57,6 +57,24 @@ No authentication. Rate-limited to one request per second per `pairing_id`.
 
 ## Configuration
 
-The backend builds `verification_uri` from `FRONTEND_URL`. Set this to the public origin of the frontend, e.g. `https://who-goes-to-try.hackathon.sev-2.com`. Defaults to `http://localhost:5173` in development.
+The backend builds `verification_uri` from `FRONTEND_URL`. In application code this defaults to `https://who-goes-to-try.hackathon.sev-2.com`, so production pods do not need to inject the variable to get the right pairing URL. Set `FRONTEND_URL` only when you need to override the default — typically `http://localhost:5173` for local development.
+
+```env
+# Local development override
+FRONTEND_URL=http://localhost:5173
+```
+
+After rollout, smoke-test the public pairing URL:
+
+```bash
+curl -s -X POST https://who-goes-to-try.hackathon.sev-2.com/api/v1/auth/pairings \
+  | jq -r '.verification_uri'
+```
+
+Expected output:
+
+```text
+https://who-goes-to-try.hackathon.sev-2.com/extension/pair
+```
 
 Expired rows are pruned every 5 minutes (`pairing.service.js#cleanupExpired`); the cleanup removes rows whose `expires_at` is more than one hour in the past so a slow extension still finds its row.
