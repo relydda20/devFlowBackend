@@ -135,8 +135,11 @@ function evaluateRules({ metrics, session }) {
   if (veryLongSession) {
     return { triggered: true, rule: 'very_long_session' };
   }
-  if (longSession && highChurn) {
-    return { triggered: true, rule: 'long_session_high_churn' };
+  if (highChurn) {
+    return { triggered: true, rule: 'high_churn' };
+  }
+  if (longSession) {
+    return { triggered: true, rule: 'long_session' };
   }
   if (rapidSwitching) {
     return { triggered: true, rule: 'rapid_context_switching' };
@@ -225,7 +228,23 @@ export async function evaluateUser(userId) {
   const metrics = await getTodayMetrics(userId);
   const rule = evaluateRules({ metrics, session });
   if (!rule.triggered) {
-    return { skipped: true, reason: 'no_rule_fired' };
+    const diagnostics = {
+      duration_minutes: session?.duration_minutes ?? 0,
+      lines_added: metrics.lines_added,
+      lines_deleted: metrics.lines_deleted,
+      churn_ratio: metrics.churn_ratio,
+      switch_count: metrics.switch_count,
+      rapid_switch_count: metrics.rapid_switch_count,
+      thresholds: {
+        very_long_session_min: VERY_LONG_SESSION_MIN(),
+        long_session_min: LONG_SESSION_MIN(),
+        high_churn_ratio: HIGH_CHURN_RATIO(),
+        rapid_switch_count: RAPID_SWITCH_COUNT(),
+        delete_heavy_total: DELETE_HEAVY_TOTAL(),
+      },
+    };
+    logger.info('insight-trigger: no rule fired', { user_id: userId, ...diagnostics });
+    return { skipped: true, reason: 'no_rule_fired', diagnostics };
   }
 
   let llmOutput;
