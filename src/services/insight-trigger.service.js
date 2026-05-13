@@ -108,12 +108,29 @@ async function getLatestRecommendationForUser(userId) {
   return row || null;
 }
 
+// Rule thresholds. Lowered from product-realistic values so the demo can fire
+// recommendations on modest activity while the ETL line-count proxy bug is unfixed.
+// Override via env if you need different values for production vs demo.
+const VERY_LONG_SESSION_MIN = () => positiveInt(process.env.RULE_VERY_LONG_SESSION_MIN, 30);
+const LONG_SESSION_MIN = () => positiveInt(process.env.RULE_LONG_SESSION_MIN, 15);
+const HIGH_CHURN_RATIO = () => positiveFloat(process.env.RULE_HIGH_CHURN_RATIO, 0.3);
+const RAPID_SWITCH_COUNT = () => positiveInt(process.env.RULE_RAPID_SWITCH_COUNT, 3);
+const DELETE_HEAVY_TOTAL = () => positiveInt(process.env.RULE_DELETE_HEAVY_TOTAL, 5);
+
+function positiveFloat(raw, fallback) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 function evaluateRules({ metrics, session }) {
-  const longSession = (session?.duration_minutes ?? 0) > 120;
-  const highChurn = (metrics.churn_ratio ?? 0) > 0.4;
-  const veryLongSession = (session?.duration_minutes ?? 0) > 240;
-  const rapidSwitching = metrics.rapid_switch_count > 30;
-  const deleteHeavy = metrics.lines_deleted > metrics.lines_added && (metrics.lines_added + metrics.lines_deleted) > 50;
+  const duration = session?.duration_minutes ?? 0;
+  const longSession = duration > LONG_SESSION_MIN();
+  const highChurn = (metrics.churn_ratio ?? 0) > HIGH_CHURN_RATIO();
+  const veryLongSession = duration > VERY_LONG_SESSION_MIN();
+  const rapidSwitching = metrics.rapid_switch_count > RAPID_SWITCH_COUNT();
+  const deleteHeavy =
+    metrics.lines_deleted > metrics.lines_added &&
+    metrics.lines_added + metrics.lines_deleted > DELETE_HEAVY_TOTAL();
 
   if (veryLongSession) {
     return { triggered: true, rule: 'very_long_session' };
