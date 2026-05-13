@@ -23,6 +23,9 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
+          env:
+            - name: FRONTEND_URL
+              value: "https://who-goes-to-try.hackathon.sev-2.com"
           envFrom:
             - secretRef:
                 name: who-goes-to-try-backend-secret

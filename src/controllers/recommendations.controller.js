@@ -1,7 +1,14 @@
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/database.js';
+import logger from '../utils/logger.js';
+import {
+  evaluateUser,
+  expireLatestRecommendation,
+  createDemoRecommendation,
+} from '../services/insight-trigger.service.js';
 
 const VALID_ACTIONS = ['accepted', 'dismissed', 'snoozed'];
+const VALID_TRIGGER_MODES = ['real', 'force', 'demo'];
 
 function shapeRecommendation(row) {
   return {
@@ -62,6 +69,42 @@ export async function getRecent(req, res, next) {
     );
 
     return res.json({ recommendations: rows.map(shapeRecommendation) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function triggerRecommendation(req, res, next) {
+  try {
+    const mode = req.body?.mode ?? 'real';
+    if (!VALID_TRIGGER_MODES.includes(mode)) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: `mode must be one of ${VALID_TRIGGER_MODES.join(', ')}`,
+      });
+    }
+
+    let outcome;
+    if (mode === 'real') {
+      outcome = await evaluateUser(req.user.id);
+    } else if (mode === 'force') {
+      await expireLatestRecommendation(req.user.id);
+      outcome = await evaluateUser(req.user.id);
+    } else {
+      outcome = await createDemoRecommendation(req.user.id);
+    }
+
+    logger.info('recommendation-trigger', {
+      user_id: req.user.id,
+      mode,
+      outcome,
+    });
+
+    if (mode === 'demo' && outcome.skipped && outcome.reason === 'no_session') {
+      return res.status(409).json(outcome);
+    }
+
+    return res.status(200).json(outcome);
   } catch (err) {
     next(err);
   }

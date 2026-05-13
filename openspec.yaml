@@ -958,3 +958,46 @@ paths:
           description: Recommendation not found
         '409':
           description: Recommendation already acted on
+
+  /recommendations/trigger:
+    post:
+      summary: Manually trigger an insight evaluation (demo / debugging escape hatch)
+      operationId: triggerRecommendation
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: [real, force, demo]
+                  description: |
+                    real: invoke evaluateUser with full gates (cooldown, rules, LLM).
+                    force: expire latest pending recommendation, then evaluateUser.
+                    demo: fabricate a canned recommendation; no LLM call.
+                    Defaults to "real" when omitted.
+      responses:
+        '200':
+          description: Trigger processed. Body shape varies by mode and outcome.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  skipped: { type: boolean }
+                  reason: { type: string }
+                  mode: { type: string }
+                  rule: { type: string }
+                  state_type: { type: string }
+                  recommendation_id: { type: integer }
+        '400':
+          description: Validation failed (invalid mode)
+        '401':
+          description: Unauthorized
+        '409':
+          description: No active session (demo mode only)

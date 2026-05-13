@@ -5,9 +5,12 @@ metadata:
   namespace: who-goes-to-try
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    traefik.ingress.kubernetes.io/router.middlewares: who-goes-to-try-strip-api@kubernetescrd
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - who-goes-to-try.hackathon.sev-2.com
+      secretName: who-goes-to-try-tls-cert
   rules:
     - host: who-goes-to-try.hackathon.sev-2.com
       http:
