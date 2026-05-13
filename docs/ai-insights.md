@@ -6,7 +6,7 @@ A Gemini-powered pipeline that watches each user's metrics and surfaces concrete
 
 1. The **insight scheduler** ticks every `INSIGHT_CHECK_INTERVAL_SECONDS` (default 600 s).
 2. For each user with telemetry in the last `INSIGHT_ACTIVITY_WINDOW_MINUTES` (default 30), the **rule engine** evaluates today's metrics + current session.
-3. If a rule fires AND the user is not in cooldown, the system asks **Gemini** (`gemini-1.5-flash` by default) to characterize the workflow state and propose one action.
+3. If a rule fires AND the user is not in cooldown, the system asks **Gemini** (`gemini-2.5-flash` by default) to characterize the workflow state and propose one action.
 4. Gemini returns strict JSON validated against an enum schema. Invalid responses are dropped, never persisted.
 5. A `WorkflowState` row + a `Recommendation` row are written. Any prior pending recommendation for the user is marked `expired` in the same transaction.
 
@@ -63,7 +63,7 @@ All require JWT or `dvf_` API token auth. The action endpoint also verifies owne
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `GOOGLE_API_KEY` | _(unset)_ | Required to enable the pipeline. Unset = scheduler logs a single warning at boot and disables itself; rest of the API works. |
-| `GEMINI_MODEL` | `gemini-1.5-flash` | Model name passed to the SDK. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model name passed to the SDK. |
 | `INSIGHTS_ENABLED` | `true` | Kill switch. Set to `false` to disable the scheduler. |
 | `INSIGHT_CHECK_INTERVAL_SECONDS` | `600` | How often the scheduler ticks. |
 | `INSIGHT_COOLDOWN_MINUTES` | `45` | Minimum gap between recommendations for the same user. |
