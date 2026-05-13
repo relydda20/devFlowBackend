@@ -18,6 +18,7 @@ function shapeRecommendation(row) {
     recommendation_type: row.recommendation_type,
     recommendation_text: row.recommendation_text,
     reasoning: row.code_context?.reasoning ?? null,
+    evidence: Array.isArray(row.code_context?.evidence) ? row.code_context.evidence : [],
     user_action: row.user_action,
     created_at: row.created_at,
   };
